@@ -1,6 +1,9 @@
 import typography from '@tailwindcss/typography'
 
-export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
-  plugins: [typography()],
-}
+module.exports = {
+  content: ["./src/**/*.{js,jsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [require('@tailwindcss/typography')],
+};
