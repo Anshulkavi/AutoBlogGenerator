@@ -64,7 +64,15 @@ const AppPage = ({ onBackToHome }) => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(false)}
+        onBlogSelect={(blog) => {
+          setGeneratedBlog(blog);
+          setViewMode("blog");
+          setMessages([]);
+        }}
+      />
 
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ${

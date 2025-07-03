@@ -161,16 +161,16 @@
 
 // export default BlogDisplay;
 
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
+import React from "react";
+import ReactMarkdown from "react-markdown";
 
 const BlogDisplay = ({ blog }) => {
   if (!blog) return null;
 
   const today = new Date().toLocaleDateString("en-IN", {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 
   return (
@@ -180,7 +180,9 @@ const BlogDisplay = ({ blog }) => {
         <p className="text-lg font-semibold">🖼️ No image inserted</p>
         <p className="text-sm mt-1">You can search manually below:</p>
         <a
-          href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(blog.topic || blog.title || "blog")}`}
+          href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(
+            blog.topic || blog.title || "blog"
+          )}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
@@ -215,9 +217,8 @@ const BlogDisplay = ({ blog }) => {
         </p>
 
         <div className="prose max-w-none prose-indigo text-gray-800 [&_h1]:text-3xl [&_h2]:text-2xl [&_h3]:text-xl">
-  <ReactMarkdown>{blog.content}</ReactMarkdown>
-</div>
-
+          <ReactMarkdown>{blog.content}</ReactMarkdown>
+        </div>
       </div>
     </div>
   );
