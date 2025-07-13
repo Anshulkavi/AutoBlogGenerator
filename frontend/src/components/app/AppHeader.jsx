@@ -121,4 +121,5 @@ const AppHeader = ({ onToggleSidebar, onBackToHome, sidebarOpen, viewMode, setVi
   </div>
 );
 
+
 export default AppHeader;
