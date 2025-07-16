@@ -35,4 +35,5 @@ const InputArea = ({ inputValue, onInputChange, onSendMessage, isGenerating }) =
   </div>
 );
 
+
 export default InputArea;
