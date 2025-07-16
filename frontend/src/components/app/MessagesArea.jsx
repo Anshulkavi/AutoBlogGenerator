@@ -31,4 +31,5 @@ const MessagesArea = ({ messages, isGenerating, onSampleClick }) => {
   );
 };
 
+
 export default MessagesArea;
