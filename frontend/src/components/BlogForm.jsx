@@ -14,7 +14,9 @@ const BlogForm = ({ onGenerate }) => {
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:8000/api/generate_blog", {
+        const BACKEND_URL = import.meta.env.BACKEND_API_URL;
+
+      const res = await axios.post(`${BACKEND_URL}/generate_blog`, {
         topic,
       });
 

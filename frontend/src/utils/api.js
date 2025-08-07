@@ -1,6 +1,7 @@
 // utils/api.js
 export const generateBlog = async (topic) => {
-  const response = await fetch("http://localhost:8000/api/generate_blog", {
+  const BACKEND_URL = import.meta.env.BACKEND_API_URL;
+  const response = await fetch(`${BACKEND_URL}/generate_blog`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
