@@ -36,7 +36,7 @@ router = APIRouter()
 async def generate_blog_route(req: BlogRequest):
     try:
         # 🧠 Generate blog from Gemini or any logic
-        blog = generate_blog(req.topic)  # ⛔ If async, add "await"
+        blog = await generate_blog(req.topic)  # ⛔ If async, add "await"
 
         # ⏳ Prepare blog document
         blog_data = {
