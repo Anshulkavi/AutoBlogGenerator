@@ -43,8 +43,13 @@ async def generate_blog_route(req: BlogRequest):
 
     except Exception as e:
         print("❌ Error while generating/saving blog:", str(e))
-        return error_response("Failed to generate blog", str(e))
-
+        return JSONResponse(
+           status_code=500,
+           content={
+              "error": "Failed to generate blog",
+              "details": str(e)
+           }
+        )
 # -------------------- Get Blog by ID --------------------
 @router.get("/blog/{id}")
 async def get_blog_by_id(id: str):
@@ -60,9 +65,13 @@ async def get_blog_by_id(id: str):
         return JSONResponse(content=blog)
 
     except Exception as e:
-        print("❌ Error while fetching blog:", str(e))
-        return error_response("Failed to fetch blog", str(e))
-
+        return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Failed to generate blog",
+            "details": str(e)
+        }
+    )
 # -------------------- Generate Blog (No Save) --------------------
 @router.post("/generate")
 async def generate_blog_endpoint(req: BlogRequest):
@@ -70,5 +79,11 @@ async def generate_blog_endpoint(req: BlogRequest):
         blog = await generate_blog(req.topic)
         return JSONResponse(content=blog)
     except Exception as e:
-        print("❌ Error while generating blog:", str(e))
-        return error_response("Failed to generate blog", str(e))
+        print("❌ Error while generating/saving blog:", str(e))
+        return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Failed to generate blog",
+            "details": str(e)
+        }
+    )
