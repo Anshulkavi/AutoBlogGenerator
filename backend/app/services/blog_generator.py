@@ -1,8 +1,8 @@
+# app/services/blog_generator.py
 import os
 import asyncio
 import google.generativeai as genai
 from dotenv import load_dotenv
-import re
 import logging
 import traceback
 
@@ -11,215 +11,160 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+# Configure Google AI
 api_key = os.getenv("GOOGLE_API_KEY")
-
-# Validate API key
 if not api_key:
-    logger.error("❌ GOOGLE_API_KEY environment variable is not set")
-    raise ValueError("GOOGLE_API_KEY environment variable is not set")
+    logger.error("❌ GOOGLE_API_KEY not found in environment variables")
+    raise ValueError("GOOGLE_API_KEY environment variable is required")
 
-logger.info("✅ Google API key found, configuring Gemini...")
+logger.info("✅ Configuring Google AI with API key")
 genai.configure(api_key=api_key)
 
 async def generate_blog(topic: str) -> dict:
     """
-    Generate a blog post using Google's Gemini AI model.
+    Generate a blog post using Google's Gemini AI.
     
     Args:
         topic (str): The topic for the blog post
         
     Returns:
-        dict: Dictionary containing 'title' and 'content' keys
-        
-    Raises:
-        Exception: If blog generation fails
+        dict: Dictionary containing 'title' and 'content'
     """
-    logger.info(f"🤖 Starting blog generation for topic: '{topic}'")
+    logger.info(f"🤖 Starting blog generation for: '{topic}'")
     
     if not topic or not topic.strip():
-        logger.error("❌ Empty topic provided to generate_blog")
         raise ValueError("Topic cannot be empty")
     
     topic = topic.strip()
     
-    prompt = f"""
-Write a comprehensive 600-800 word SEO-optimized blog post about: "{topic}"
+    # Create a comprehensive prompt
+    prompt = f"""Write a detailed, engaging blog post about "{topic}".
 
 Requirements:
-- Create a catchy, SEO-friendly title (no more than 60 characters)
-- Write engaging content with proper markdown formatting
-- Include an introduction, main sections with headers, and conclusion
-- Use bullet points or numbered lists where appropriate
-- Make it informative, well-structured, and engaging for readers
+- Write 500-700 words
+- Create an SEO-friendly title (under 60 characters)
+- Use proper markdown formatting with headers and bullet points
+- Include practical tips and actionable advice
+- Make it informative and engaging for readers
 
-IMPORTANT: Respond EXACTLY in this format with no extra text:
+Format your response EXACTLY like this:
 
-TITLE: [Your catchy blog title here]
+TITLE: Your Blog Title Here
 
 CONTENT:
-[Full blog content in markdown format starting here - include headers, bullet points, etc.]
+# Your Blog Title Here
+
+## Introduction
+[Write an engaging introduction paragraph]
+
+## Main Content
+[Write the main content with subheadings, bullet points, and detailed information]
+
+## Conclusion
+[Write a strong conclusion paragraph]
 """
 
     try:
         logger.info("🔗 Initializing Gemini model...")
         model = genai.GenerativeModel("gemini-1.5-flash")
         
-        logger.info("⏳ Generating content with AI...")
+        logger.info("⏳ Generating content...")
         
-        # Use run_in_executor for synchronous generate_content
+        # Generate content synchronously in thread pool
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, model.generate_content, prompt)
+        response = await loop.run_in_executor(
+            None, 
+            lambda: model.generate_content(prompt)
+        )
         
         logger.info("✅ AI response received")
         
-        if not response:
-            logger.error("❌ Empty response from AI model")
-            raise Exception("Empty response from AI model")
-        
-        if not hasattr(response, 'text') or not response.text:
-            logger.error("❌ AI response missing text content")
-            raise Exception("AI response missing text content")
+        # Validate response
+        if not response or not hasattr(response, 'text') or not response.text:
+            logger.error("❌ Empty or invalid response from AI")
+            raise Exception("AI returned empty response")
         
         text = response.text.strip()
-        logger.info(f"📝 AI response length: {len(text)} characters")
-        logger.info(f"📝 AI response preview: {text[:200]}...")
+        logger.info(f"📝 Response length: {len(text)} characters")
         
         # Parse the response
-        logger.info("🔍 Parsing AI response...")
-        title, content = parse_blog_response(text, topic)
+        title, content = parse_ai_response(text, topic)
         
-        logger.info(f"✅ Successfully parsed - Title: '{title[:50]}...', Content length: {len(content)}")
-        
-        return {
+        result = {
             "title": title,
             "content": content
         }
         
+        logger.info(f"✅ Blog generated successfully: '{title[:50]}...'")
+        return result
+        
     except Exception as e:
         logger.error(f"❌ Error in generate_blog: {str(e)}")
-        logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+        logger.error(f"❌ Traceback: {traceback.format_exc()}")
         
-        # Return a fallback blog instead of failing completely
-        logger.info("🔄 Generating fallback blog...")
+        # Return fallback blog instead of raising exception
+        logger.info("🔄 Creating fallback blog...")
         return create_fallback_blog(topic)
 
-def parse_blog_response(text: str, topic: str) -> tuple[str, str]:
-    """
-    Parse the AI response to extract title and content.
-    
-    Args:
-        text (str): Raw AI response
-        topic (str): Original topic for fallback
-        
-    Returns:
-        tuple: (title, content)
-    """
-    logger.info("🔍 Starting response parsing...")
+def parse_ai_response(text: str, topic: str) -> tuple[str, str]:
+    """Parse AI response to extract title and content."""
+    logger.info("🔍 Parsing AI response...")
     
     try:
-        # Clean up the text
-        text = text.strip()
-        
-        # Try to find title using different patterns
-        title_patterns = [
-            r'TITLE:\s*(.+?)(?:\n|CONTENT:)',
-            r'title:\s*(.+?)(?:\n|content:)',
-            r'Title:\s*(.+?)(?:\n|Content:)',
-        ]
-        
+        # Look for title
         title = None
-        for i, pattern in enumerate(title_patterns):
-            match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE | re.DOTALL)
-            if match:
-                title = match.group(1).strip()
-                logger.info(f"✅ Found title using pattern {i+1}: '{title[:50]}...'")
-                break
-        
-        # Try to find content
-        content_patterns = [
-            r'CONTENT:\s*(.+)',
-            r'content:\s*(.+)',
-            r'Content:\s*(.+)',
-        ]
-        
         content = None
-        for i, pattern in enumerate(content_patterns):
-            match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-            if match:
-                content = match.group(1).strip()
-                logger.info(f"✅ Found content using pattern {i+1}, length: {len(content)}")
-                break
         
-        # If patterns didn't work, try a different approach
-        if not title or not content:
-            logger.info("🔄 Primary patterns failed, trying alternative parsing...")
-            lines = text.split('\n')
-            
-            # Look for title in first few lines
-            if not title:
-                for line in lines[:5]:
-                    line = line.strip()
-                    if line and not line.lower().startswith(('content', 'title')):
-                        # Remove markdown formatting
-                        clean_line = re.sub(r'^#+\s*', '', line).strip()
-                        clean_line = re.sub(r'\*\*(.+?)\*\*', r'\1', clean_line)
-                        if len(clean_line) > 5 and len(clean_line) < 100:
-                            title = clean_line
-                            logger.info(f"✅ Extracted title from lines: '{title}'")
-                            break
-            
-            # Use remaining text as content
-            if not content:
-                # Find where content starts
-                content_start_idx = 0
-                for i, line in enumerate(lines):
-                    if title and title.lower() in line.lower():
-                        content_start_idx = i + 1
-                        break
-                    elif re.search(r'content:', line, re.IGNORECASE):
-                        content_start_idx = i + 1
-                        break
-                
-                content = '\n'.join(lines[content_start_idx:]).strip()
-                logger.info(f"✅ Extracted content from remaining lines, length: {len(content)}")
+        # Try different title patterns
+        import re
         
-        # Final fallbacks
+        title_match = re.search(r'TITLE:\s*(.+?)(?:\n|$)', text, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+            logger.info(f"✅ Found title: '{title}'")
+        
+        # Try to find content after TITLE: or CONTENT:
+        content_match = re.search(r'CONTENT:\s*(.+)', text, re.DOTALL | re.IGNORECASE)
+        if content_match:
+            content = content_match.group(1).strip()
+        else:
+            # If no CONTENT: marker, use everything after the title
+            if title:
+                content = text.replace(f"TITLE: {title}", "").strip()
+                content = re.sub(r'^CONTENT:\s*', '', content, flags=re.IGNORECASE | re.MULTILINE)
+            else:
+                content = text
+        
+        # Clean up and validate
         if not title:
-            title = f"Complete Guide to {topic.title()}"
-            logger.info(f"🔄 Using fallback title: '{title}'")
+            # Extract first line or create fallback
+            first_line = text.split('\n')[0].strip()
+            title = first_line if first_line and len(first_line) < 100 else f"Complete Guide to {topic.title()}"
         
-        if not content or len(content.strip()) < 100:
-            logger.warning("⚠️ Content too short or missing, using full response as content")
-            content = text
-        
-        # Clean up title (remove markdown, extra spaces)
-        title = re.sub(r'^#+\s*', '', title).strip()
-        title = re.sub(r'\*\*(.+?)\*\*', r'\1', title)
-        title = title[:100]  # Limit title length
+        # Remove title from content if it appears at the beginning
+        if content.startswith(title):
+            content = content[len(title):].strip()
         
         # Ensure minimum content length
-        if len(content.strip()) < 100:
-            raise ValueError("Generated content too short")
+        if len(content) < 100:
+            logger.warning("⚠️ Content too short, using full response")
+            content = text
         
-        logger.info(f"✅ Parsing completed - Title: '{title}', Content length: {len(content)}")
+        # Clean up title
+        title = re.sub(r'^#+\s*', '', title).strip()
+        title = title[:100]  # Limit length
+        
+        logger.info(f"✅ Parsed successfully - Title: '{title}', Content: {len(content)} chars")
         return title, content
         
     except Exception as e:
-        logger.error(f"❌ Error parsing blog response: {str(e)}")
-        logger.error(f"❌ Full traceback: {traceback.format_exc()}")
+        logger.error(f"❌ Error parsing response: {str(e)}")
         raise Exception(f"Failed to parse AI response: {str(e)}")
 
 def create_fallback_blog(topic: str) -> dict:
-    """
-    Create a fallback blog when AI generation fails.
-    
-    Args:
-        topic (str): The topic for the blog
-        
-    Returns:
-        dict: Dictionary with title and content
-    """
-    logger.info(f"🔄 Creating fallback blog for topic: '{topic}'")
+    """Create a fallback blog when AI generation fails."""
+    logger.info(f"🔄 Creating fallback blog for: '{topic}'")
     
     title = f"Understanding {topic.title()}: A Comprehensive Guide"
     
@@ -227,78 +172,45 @@ def create_fallback_blog(topic: str) -> dict:
 
 ## Introduction
 
-{topic} is an important subject that deserves our attention and understanding. In this comprehensive guide, we'll explore various aspects of {topic} and provide valuable insights to help you better understand this topic.
+Welcome to this comprehensive guide about {topic}. This topic is increasingly important in today's world, and understanding it can provide valuable insights and practical benefits.
 
-## What is {topic}?
+## What You Need to Know About {topic}
 
-{topic} encompasses various elements that are crucial in today's rapidly evolving world. Understanding the fundamentals of {topic} can provide numerous benefits and open up new opportunities for learning and growth.
+{topic} encompasses several key concepts that are worth exploring:
 
-## Key Aspects of {topic}
+### Key Benefits
+- **Educational Value**: Learning about {topic} expands your knowledge
+- **Practical Applications**: {topic} has real-world uses
+- **Future Relevance**: Understanding {topic} prepares you for future trends
 
-### 1. Foundation and Basics
-- **Core Concepts**: The fundamental principles that define {topic}
-- **Historical Context**: How {topic} has evolved over time
-- **Current Relevance**: Why {topic} matters in today's context
+### Getting Started
+- Research the basics from reliable sources
+- Look for practical examples and case studies
+- Connect with communities interested in {topic}
 
-### 2. Practical Applications
-- **Real-world Uses**: How {topic} is applied in various industries
-- **Benefits**: The advantages of understanding and implementing {topic}
-- **Challenges**: Common obstacles and how to overcome them
+## Practical Tips for {topic}
 
-### 3. Future Perspectives
-- **Emerging Trends**: What's new and exciting in the field of {topic}
-- **Opportunities**: Areas where {topic} shows promising potential
-- **Innovation**: How {topic} continues to evolve and adapt
+Here are some actionable tips to help you get started:
 
-## Why {topic} Matters
+1. **Start with the fundamentals** - Build a solid foundation
+2. **Practice regularly** - Apply what you learn in real situations
+3. **Stay updated** - Follow developments and new trends
+4. **Join communities** - Connect with others who share your interest
 
-Understanding {topic} is increasingly important because:
+## Common Questions
 
-1. **Educational Value**: It expands your knowledge and critical thinking skills
-2. **Professional Growth**: Knowledge of {topic} can enhance career prospects
-3. **Personal Development**: It contributes to a well-rounded understanding of the world
-4. **Future Preparedness**: Staying informed helps you adapt to changes
+**Q: Why is {topic} important?**
+A: {topic} is relevant because it affects many aspects of our daily lives and future development.
 
-## Getting Started with {topic}
-
-If you're new to {topic}, here's a roadmap to begin your learning journey:
-
-### Step 1: Research and Foundation
-- Start with reliable sources and basic materials
-- Build a solid understanding of core concepts
-- Take notes and organize your learning
-
-### Step 2: Practical Exploration
-- Look for real-world examples and case studies
-- Try to apply concepts in relevant situations
-- Connect with others who share your interest
-
-### Step 3: Continuous Learning
-- Stay updated with latest developments
-- Join communities or forums related to {topic}
-- Practice and refine your understanding regularly
-
-## Common Questions About {topic}
-
-**Q: How long does it take to understand {topic}?**
-A: The learning timeline varies depending on your background and the depth you want to achieve. Start with basics and gradually build your knowledge.
-
-**Q: What resources are best for learning about {topic}?**
-A: Look for reputable books, online courses, research papers, and expert blogs. Hands-on experience is also valuable.
-
-**Q: Is {topic} relevant for everyone?**
-A: While not everyone needs deep expertise, a basic understanding of {topic} can be beneficial in our interconnected world.
+**Q: How can I learn more about {topic}?**
+A: Start with reputable sources, take online courses, and engage with expert content.
 
 ## Conclusion
 
-{topic} represents an exciting area of knowledge with wide-ranging implications. Whether you're just starting your journey or looking to deepen your understanding, remember that learning is a continuous process.
+{topic} represents an exciting area for exploration and learning. Whether you're just beginning or looking to deepen your understanding, taking the time to learn about {topic} is a valuable investment.
 
-The key to mastering {topic} lies in consistent effort, staying curious, and remaining open to new ideas. As you continue to explore this subject, you'll discover new connections and applications that make the learning experience even more rewarding.
-
-Take the first step today, and begin your journey toward understanding {topic}. The knowledge you gain will serve you well in many aspects of life and work.
+Remember that mastering any subject takes time and practice. Be patient with yourself and enjoy the learning journey as you discover more about {topic}.
 """
-    
-    logger.info(f"✅ Fallback blog created - Title: '{title}', Content length: {len(content)}")
     
     return {
         "title": title,
