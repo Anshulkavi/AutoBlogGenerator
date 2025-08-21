@@ -12,4 +12,3 @@ export const generateBlog = async (topic) => {
   if (!response.ok) throw new Error("Failed to generate blog");
   return await response.json();
 };
-en
