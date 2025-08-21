@@ -69,5 +69,5 @@ async def get_blog_by_id(id: str):
         return blog
 
     except Exception as e:
-        print("❌ Error fetching blog by ID:", str(e))
-        raise HTTPException(status_code=500, detail="Failed to fetch blog")
+       print("❌ Error while generating/saving blog:", str(e))
+       raise HTTPException(status_code=500, detail=f"Failed to generate blog: {str(e)}")
