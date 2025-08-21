@@ -24,6 +24,9 @@ export const generateBlog = async (topic) => {
   });
 
   const text = await response.text(); // always capture raw response
+    console.log("🔎 Raw backend response:", text);
+
+  const data = JSON.parse(text);  // 👈 then try parsing
 
   if (!response.ok) {
     console.error("Backend error:", response.status, text);
