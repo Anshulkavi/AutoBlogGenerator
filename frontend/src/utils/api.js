@@ -23,8 +23,17 @@ export const generateBlog = async (topic) => {
     body: JSON.stringify({ topic }),
   });
 
-  const text = await response.text(); // for debugging
+  const text = await response.text(); // always capture raw response
 
-  if (!response.ok) throw new Error(`Failed: ${text}`);
-  return JSON.parse(text);
+  if (!response.ok) {
+    console.error("Backend error:", response.status, text);
+    throw new Error(`Failed (${response.status}): ${text}`);
+  }
+
+  try {
+    return JSON.parse(text); // ✅ safe parse
+  } catch (err) {
+    console.error("Invalid JSON from backend:", text);
+    throw new Error("Backend did not return valid JSON");
+  }
 };
