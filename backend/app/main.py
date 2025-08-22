@@ -30,9 +30,9 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,         # restrict to specific origins
+    allow_origins=origins,        # upar wali list se allow karega
     allow_credentials=True,
-    allow_methods=["*"],           # allow all methods (important for OPTIONS)
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
