@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 import traceback
 import logging
 import uuid
+from bson import json_util
+import json
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -81,18 +84,12 @@ async def start_generation_route(req: BlogRequest, background_tasks: BackgroundT
 # --- API Endpoint to CHECK the status/result ---
 @router.get("/generate_blog/status/{job_id}")
 async def get_status_route(job_id: str):
-    """Checks the status of a background job from the database."""
-    # ✅ Fetch the job from the database
     job = await jobs_collection.find_one({"_id": job_id})
     
     if not job:
         raise HTTPException(status_code=404, detail="Job ID not found.")
+
+    # Convert BSON to JSON-serializable dict
+    job_json = json.loads(json_util.dumps(job))
     
-    # The 'result' field might be large, so we don't need to log it every time.
-    logger.info(f"Status check for job ID {job_id}: {job.get('status')}")
-    
-    # We need to convert the '_id' from ObjectId to string for JSON response if it exists in the result
-    if job.get('result') and job['result'].get('_id'):
-        job['result']['_id'] = str(job['result']['_id'])
-        
-    return JSONResponse(content=job)
+    return JSONResponse(content=job_json)
