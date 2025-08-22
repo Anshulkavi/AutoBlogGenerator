@@ -1,5 +1,21 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_API_URL;
 
+// Helper function to handle errors more robustly
+const handleError = async (response) => {
+    let errorMessage;
+    try {
+        // First, try to parse the error as JSON (like FastAPI sends)
+        const errorJson = await response.json();
+        errorMessage = errorJson.detail || JSON.stringify(errorJson);
+    } catch (e) {
+        // If that fails, it's not JSON (e.g., an HTML error page from Render)
+        // So, we read it as plain text.
+        errorMessage = await response.text();
+    }
+    throw new Error(errorMessage || `Request failed with status: ${response.status}`);
+};
+
+
 /**
  * Starts the blog generation process.
  * @param {string} topic The topic for the blog.
@@ -14,8 +30,7 @@ export const startBlogGeneration = async (topic) => {
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || `Failed to start generation. Status: ${response.status}`);
+    await handleError(response);
   }
 
   const data = await response.json();
@@ -32,8 +47,7 @@ export const getGenerationStatus = async (jobId) => {
   const response = await fetch(`${BACKEND_URL}/generate_blog/status/${jobId}`);
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || `Failed to get status. Status: ${response.status}`);
+    await handleError(response);
   }
 
   const data = await response.json();
@@ -48,7 +62,7 @@ export const getGenerationStatus = async (jobId) => {
 export const getHistory = async () => {
     const response = await fetch(`${BACKEND_URL}/history`);
     if (!response.ok) {
-        throw new Error('Failed to fetch history');
+        await handleError(response);
     }
     return response.json();
 };
@@ -61,7 +75,7 @@ export const getHistory = async () => {
 export const getBlogById = async (id) => {
     const response = await fetch(`${BACKEND_URL}/blog/${id}`);
     if (!response.ok) {
-        throw new Error('Failed to fetch blog content');
+        await handleError(response);
     }
     return response.json();
 };
