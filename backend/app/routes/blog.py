@@ -305,6 +305,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from app.models.blog_request import BlogRequest
+from app.services.blog_generator import generate_blog  # Import your actual blog generator
 from datetime import datetime, timezone
 import traceback
 import logging
@@ -323,46 +324,136 @@ router = APIRouter()
 
 @router.post("/generate_blog")
 async def generate_blog_route(request: Request, req: BlogRequest):
-    """DIAGNOSTIC VERSION: Generate blog with maximum debugging"""
+    """PRODUCTION VERSION: Generate blog using actual AI service"""
     
-    # Force immediate logging
-    print("=" * 80)
-    print("🚀 DIAGNOSTIC: Blog generation request started")
-    print(f"🚀 Timestamp: {datetime.now().isoformat()}")
-    print("=" * 80)
-    
-    logger.info("🚀 DIAGNOSTIC: Blog generation request started")
+    logger.info("🚀 === PRODUCTION BLOG GENERATION STARTED ===")
+    logger.info(f"🚀 Timestamp: {datetime.now().isoformat()}")
     
     try:
         # Log request details
-        print(f"📝 Request object type: {type(req)}")
-        print(f"📝 Request topic: {getattr(req, 'topic', 'NO TOPIC ATTR')}")
-        print(f"📝 Request dict: {req.dict() if hasattr(req, 'dict') else 'NO DICT METHOD'}")
+        logger.info(f"📝 Request topic: {req.topic}")
+        logger.info(f"📝 Request type: {type(req)}")
         
-        # Log raw request
-        body = await request.body()
-        print(f"📝 Raw request body: {body}")
-        print(f"📝 Raw request headers: {dict(request.headers)}")
+        # Validate topic
+        topic = req.topic.strip() if req.topic else None
+        if not topic:
+            logger.error("❌ No topic provided")
+            raise HTTPException(
+                status_code=400, 
+                detail="Topic is required and cannot be empty"
+            )
         
-        # Simple validation
+        logger.info(f"✅ Topic validated: '{topic}'")
+        
+        # Call the actual blog generator service
+        logger.info("🤖 Calling blog generator service...")
+        blog_data = await generate_blog(topic)
+        
+        # Validate the generated data
+        if not blog_data or not isinstance(blog_data, dict):
+            logger.error("❌ Blog generator returned invalid data")
+            raise HTTPException(
+                status_code=500,
+                detail="Blog generation service returned invalid data"
+            )
+        
+        if not blog_data.get("title") or not blog_data.get("content"):
+            logger.error(f"❌ Generated blog missing required fields: {list(blog_data.keys())}")
+            raise HTTPException(
+                status_code=500,
+                detail="Generated blog is missing title or content"
+            )
+        
+        # Optional: Save to database (uncomment if you want to save)
+        blog_id = None
+        try:
+            from app.database.mongo import blogs_collection
+            blog_doc = {
+                "topic": topic,
+                "title": blog_data["title"],
+                "content": blog_data["content"],
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            result = blogs_collection.insert_one(blog_doc)
+            blog_id = str(result.inserted_id)
+            logger.info(f"✅ Blog saved to database with ID: {blog_id}")
+            pass
+        except Exception as db_error:
+            logger.warning(f"⚠️ Failed to save to database: {db_error}")
+            # Continue without database save
+        
+        # Prepare response
+        response_data = {
+            "title": blog_data["title"],
+            "content": blog_data["content"],
+            "topic": topic,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "_id": blog_id,  # Will be None if not saved to DB
+            "success": True,
+            "generation_method": "ai"
+        }
+        
+        logger.info("✅ Blog generated successfully!")
+        logger.info(f"📄 Title: '{blog_data['title']}'")
+        logger.info(f"📄 Content length: {len(blog_data['content'])} characters")
+        logger.info("🚀 === PRODUCTION BLOG GENERATION COMPLETED ===")
+        
+        return JSONResponse(
+            status_code=200,
+            content=response_data
+        )
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+        
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error("❌ PRODUCTION BLOG GENERATION ERROR")
+        logger.error(f"❌ Exception type: {type(e)}")
+        logger.error(f"❌ Exception message: {str(e)}")
+        logger.error(f"❌ Exception traceback:")
+        logger.error(traceback.format_exc())
+        logger.error("=" * 80)
+        
+        # Return structured error response
+        error_response = {
+            "error": "Blog generation failed",
+            "details": str(e),
+            "error_type": str(type(e).__name__),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "success": False
+        }
+        
+        return JSONResponse(
+            status_code=500,
+            content=error_response
+        )
+
+# Keep diagnostic endpoints for debugging
+@router.post("/generate_blog_diagnostic")
+async def generate_blog_diagnostic_route(request: Request, req: BlogRequest):
+    """DIAGNOSTIC VERSION: For testing purposes only"""
+    
+    logger.info("🧪 DIAGNOSTIC: Blog generation request started")
+    
+    try:
         topic = getattr(req, 'topic', None)
         if not topic:
-            print("❌ DIAGNOSTIC: No topic found")
-            error_response = JSONResponse(
+            return JSONResponse(
                 status_code=400,
                 content={"error": "No topic provided", "diagnostic": True}
             )
-            print(f"📤 DIAGNOSTIC: Returning error response: {error_response}")
-            return error_response
         
-        print(f"✅ DIAGNOSTIC: Topic validated: '{topic}'")
-        
-        # Create a simple test response first
-        simple_response = {
+        # Create diagnostic response
+        diagnostic_response = {
             "diagnostic": True,
-            "message": "This is a diagnostic response",
+            "message": "This is a diagnostic response - use /generate_blog for real generation",
             "topic": topic,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "note": "Switch to production endpoint for actual AI-generated content",
+            "production_endpoint": "/api/generate_blog",
             "test_data": {
                 "number": 12345,
                 "boolean": True,
@@ -371,133 +462,166 @@ async def generate_blog_route(request: Request, req: BlogRequest):
             }
         }
         
-        print(f"✅ DIAGNOSTIC: Created simple response: {simple_response}")
-        
-        # Try to return the response
-        json_response = JSONResponse(content=simple_response)
-        print(f"✅ DIAGNOSTIC: Created JSONResponse object")
-        print(f"✅ DIAGNOSTIC: Response type: {type(json_response)}")
-        
-        return json_response
+        logger.info("🧪 DIAGNOSTIC: Returning diagnostic response")
+        return JSONResponse(content=diagnostic_response)
         
     except Exception as e:
-        print("=" * 80)
-        print("❌ DIAGNOSTIC EXCEPTION OCCURRED")
-        print(f"❌ Exception type: {type(e)}")
-        print(f"❌ Exception message: {str(e)}")
-        print(f"❌ Exception traceback:")
-        traceback.print_exc()
-        print("=" * 80)
-        
-        # Try to return error response
-        try:
-            error_response = JSONResponse(
-                status_code=500,
-                content={
-                    "diagnostic_error": True,
-                    "error_type": str(type(e)),
-                    "error_message": str(e),
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-            )
-            print(f"✅ DIAGNOSTIC: Created error response")
-            return error_response
-        except Exception as inner_e:
-            print(f"❌ DIAGNOSTIC: Even error response failed: {inner_e}")
-            # Return plain text as last resort
-            return PlainTextResponse(
-                content=f"DIAGNOSTIC ERROR: {str(e)}",
-                status_code=500
-            )
+        logger.error(f"❌ DIAGNOSTIC ERROR: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "diagnostic_error": True,
+                "error_message": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        )
 
+# Test endpoint to verify blog generator service
+@router.post("/test_blog_generator")
+async def test_blog_generator_route():
+    """Test the blog generator service directly"""
+    
+    logger.info("🧪 Testing blog generator service...")
+    
+    try:
+        # Test with a simple topic
+        test_topic = "artificial intelligence"
+        logger.info(f"🧪 Testing with topic: '{test_topic}'")
+        
+        # Call the blog generator
+        result = await generate_blog(test_topic)
+        
+        logger.info("✅ Blog generator test successful!")
+        return JSONResponse(
+            content={
+                "test_successful": True,
+                "topic": test_topic,
+                "has_title": bool(result.get("title")),
+                "has_content": bool(result.get("content")),
+                "title_preview": result.get("title", "")[:50] + "..." if result.get("title") else "",
+                "content_length": len(result.get("content", "")),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Blog generator test failed: {str(e)}")
+        logger.error(traceback.format_exc())
+        
+        return JSONResponse(
+            status_code=500,
+            content={
+                "test_successful": False,
+                "error": str(e),
+                "error_type": str(type(e).__name__),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        )
+
+# Health check that tests all components
+@router.get("/production_health")
+async def production_health():
+    """Production health check - tests all components"""
+    
+    logger.info("🏥 Production health check started")
+    
+    health_data = {
+        "status": "checking",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "service": "blog-generator-production",
+        "components": {}
+    }
+    
+    # Test imports
+    try:
+        from app.services.blog_generator import generate_blog
+        health_data["components"]["blog_generator"] = "✅ Available"
+    except Exception as e:
+        health_data["components"]["blog_generator"] = f"❌ Import failed: {str(e)}"
+    
+    try:
+        from app.models.blog_request import BlogRequest
+        health_data["components"]["blog_request"] = "✅ Available"
+    except Exception as e:
+        health_data["components"]["blog_request"] = f"❌ Import failed: {str(e)}"
+    
+    # Test environment variables
+    import os
+    health_data["components"]["google_api_key"] = "✅ Set" if os.getenv("GOOGLE_API_KEY") else "❌ Missing"
+    health_data["components"]["mongodb_url"] = "✅ Set" if os.getenv("MONGODB_URL") else "❌ Missing (optional)"
+    
+    # Test database connection (optional)
+    try:
+        from app.database.mongo import blogs_collection
+        if blogs_collection is not None:
+            health_data["components"]["database"] = "✅ Connected"
+        else:
+            health_data["components"]["database"] = "⚠️ Not connected (optional)"
+    except Exception as e:
+        health_data["components"]["database"] = f"⚠️ Connection failed: {str(e)} (optional)"
+    
+    # Overall status
+    critical_components = ["blog_generator", "blog_request", "google_api_key"]
+    all_critical_ok = all(
+        health_data["components"].get(comp, "").startswith("✅") 
+        for comp in critical_components
+    )
+    
+    health_data["status"] = "healthy" if all_critical_ok else "unhealthy"
+    health_data["ready_for_production"] = all_critical_ok
+    
+    status_code = 200 if all_critical_ok else 503
+    
+    logger.info(f"🏥 Production health check completed: {health_data['status']}")
+    
+    return JSONResponse(
+        status_code=status_code,
+        content=health_data
+    )
+
+# Keep existing diagnostic endpoints for backward compatibility
 @router.get("/diagnostic_test")
 async def diagnostic_test():
     """Simple diagnostic test endpoint"""
-    print("🧪 DIAGNOSTIC: Test endpoint called")
-    
-    response_data = {
+    return JSONResponse(content={
         "diagnostic": True,
-        "message": "Test endpoint working",
+        "message": "Diagnostic endpoint working - use /production_health for production status",
         "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-    
-    print(f"🧪 DIAGNOSTIC: Returning test data: {response_data}")
-    return JSONResponse(content=response_data)
+    })
 
 @router.get("/diagnostic_health")
 async def diagnostic_health():
-    """Diagnostic health check"""
-    print("🏥 DIAGNOSTIC: Health check called")
-    
-    # Check imports
-    import_status = {}
-    try:
-        from app.models.blog_request import BlogRequest
-        import_status["blog_request"] = "✅ OK"
-    except Exception as e:
-        import_status["blog_request"] = f"❌ FAILED: {str(e)}"
-    
-    try:
-        from app.services.blog_generator import generate_blog
-        import_status["blog_generator"] = "✅ OK"
-    except Exception as e:
-        import_status["blog_generator"] = f"❌ FAILED: {str(e)}"
-    
-    try:
-        from app.database.mongo import blogs_collection
-        import_status["mongo"] = "✅ OK"
-    except Exception as e:
-        import_status["mongo"] = f"❌ FAILED: {str(e)}"
-    
-    # Check environment
-    import os
-    env_status = {
-        "GOOGLE_API_KEY": "✅ SET" if os.getenv("GOOGLE_API_KEY") else "❌ MISSING",
-        "MONGODB_URL": "✅ SET" if os.getenv("MONGODB_URL") else "❌ MISSING"
-    }
-    
-    health_data = {
+    """Diagnostic health check - redirects to production health"""
+    return JSONResponse(content={
         "diagnostic": True,
-        "status": "diagnostic_mode",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "imports": import_status,
-        "environment": env_status,
-        "python_version": sys.version,
-        "working_directory": os.getcwd()
-    }
-    
-    print(f"🏥 DIAGNOSTIC: Health data: {health_data}")
-    return JSONResponse(content=health_data)
+        "message": "Use /production_health for comprehensive health check",
+        "redirect_to": "/api/production_health",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
 
 @router.post("/diagnostic_echo")
 async def diagnostic_echo(request: Request):
-    """Echo back exactly what was received"""
-    print("🔄 DIAGNOSTIC: Echo endpoint called")
-    
-    # Get raw body
+    """Echo endpoint for debugging"""
     body = await request.body()
     
-    # Parse JSON if possible
     try:
         json_data = json.loads(body.decode('utf-8'))
     except:
         json_data = None
     
-    echo_data = {
+    return JSONResponse(content={
         "diagnostic": True,
         "method": request.method,
-        "url": str(request.url),
         "headers": dict(request.headers),
-        "raw_body": body.decode('utf-8') if body else None,
         "parsed_json": json_data,
         "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-    
-    print(f"🔄 DIAGNOSTIC: Echo data: {echo_data}")
-    return JSONResponse(content=echo_data)
+    })
 
-# Add this to test if the issue is with your specific route or FastAPI in general
 @router.get("/simple_test")
 def simple_test():
-    """Ultra simple test - no async, no logging, just return"""
-    return {"message": "simple test works", "timestamp": datetime.now().isoformat()}
+    """Ultra simple test endpoint"""
+    return {
+        "message": "Simple test works", 
+        "production_ready": True,
+        "timestamp": datetime.now().isoformat()
+    }

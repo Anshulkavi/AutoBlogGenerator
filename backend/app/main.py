@@ -1,564 +1,340 @@
-
-# # from fastapi import FastAPI
-# # from fastapi.middleware.cors import CORSMiddleware
-# # from app.routes.blog import router as blog_router
-# # from app.routes.history import router as history_router
-
-# # app = FastAPI()
-
-# # app.add_middleware(
-# #     CORSMiddleware,
-# #     allow_origins=["*"],  # 👈 for testing, allow all. Use frontend origin in prod
-# #     allow_credentials=True,
-# #     allow_methods=["*"],
-# #     allow_headers=["*"],
-# # )
-
-# # app.include_router(blog_router, prefix="/api")
-# # app.include_router(history_router, prefix="/api")
-
-# # main.py or wherever you initialize your FastAPI app
-# # from fastapi import FastAPI, Request
-# # from fastapi.middleware.cors import CORSMiddleware
-# # from fastapi.responses import JSONResponse
-# # import logging
-# # import traceback
-# # from datetime import datetime, timezone
-
-# # # Import your router
-# # from app.routes.blog import router as blog_router
-
-# # # Set up logging
-# # logging.basicConfig(
-# #     level=logging.INFO,
-# #     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-# # )
-# # logger = logging.getLogger(__name__)
-
-# # app = FastAPI(
-# #     title="Blog Generator API",
-# #     description="AI-powered blog generation service",
-# #     version="1.0.0"
-# # )
-
-# # # CORS middleware
-# # app.add_middleware(
-# #     CORSMiddleware,
-# #     allow_origins=["*"],  # In production, specify your frontend domains
-# #     allow_credentials=True,
-# #     allow_methods=["*"],
-# #     allow_headers=["*"],
-# # )
-
-# # # Global exception handler
-# # @app.exception_handler(Exception)
-# # async def global_exception_handler(request: Request, exc: Exception):
-# #     logger.error(f"❌ Unhandled exception: {str(exc)}")
-# #     logger.error(f"❌ Request URL: {request.url}")
-# #     logger.error(f"❌ Request method: {request.method}")
-# #     logger.error(f"❌ Full traceback: {traceback.format_exc()}")
-    
-# #     return JSONResponse(
-# #         status_code=500,
-# #         content={
-# #             "error": "Internal server error",
-# #             "details": "An unexpected error occurred",
-# #             "timestamp": datetime.now(timezone.utc).isoformat()
-# #         }
-# #     )
-
-# # # Request logging middleware
-# # @app.middleware("http")
-# # async def log_requests(request: Request, call_next):
-# #     start_time = datetime.now()
-    
-# #     # Log request details
-# #     logger.info(f"📥 {request.method} {request.url}")
-    
-# #     # Get request body for POST requests
-# #     if request.method in ["POST", "PUT", "PATCH"]:
-# #         body = await request.body()
-# #         if body:
-# #             try:
-# #                 body_str = body.decode('utf-8')
-# #                 logger.info(f"📝 Request body: {body_str[:500]}...")
-# #             except:
-# #                 logger.info("📝 Request body: [binary data]")
-    
-# #     response = await call_next(request)
-    
-# #     # Log response details
-# #     process_time = (datetime.now() - start_time).total_seconds()
-# #     logger.info(f"📤 Response: {response.status_code} - {process_time:.3f}s")
-    
-# #     return response
-
-# # # Health check endpoint
-# # @app.get("/")
-# # async def root():
-# #     return {
-# #         "message": "Blog Generator API is running",
-# #         "status": "healthy",
-# #         "timestamp": datetime.now(timezone.utc).isoformat(),
-# #         "version": "1.0.0"
-# #     }
-
-# # @app.get("/health")
-# # async def health_check():
-# #     return {
-# #         "status": "healthy",
-# #         "timestamp": datetime.now(timezone.utc).isoformat(),
-# #         "service": "blog-generator-api"
-# #     }
-
-# # # Include blog routes
-# # app.include_router(blog_router, prefix="/api", tags=["blogs"])
-
-# # if __name__ == "__main__":
-# #     import uvicorn
-# #     logger.info("🚀 Starting Blog Generator API server...")
-# #     uvicorn.run(
-# #         "main:app",
-# #         host="0.0.0.0",
-# #         port=8000,
-# #         reload=True,
-# #         log_level="info"
-# #     )
-
-# from fastapi import FastAPI, Request, HTTPException
-# from fastapi.middleware.cors import CORSMiddleware
-# from fastapi.responses import JSONResponse
-# import logging
-# import traceback
-# import sys
-# import json
-# from datetime import datetime, timezone
-
-# # Import your router
-# from app.routes.blog import router as blog_router
-
-# # Set up comprehensive logging
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-#     handlers=[
-#         logging.StreamHandler(sys.stdout)
-#     ]
-# )
-# logger = logging.getLogger(__name__)
-
-# app = FastAPI(
-#     title="Blog Generator API",
-#     description="AI-powered blog generation service",
-#     version="1.0.0",
-#     docs_url="/docs",
-#     redoc_url="/redoc"
-# )
-
-# # Enhanced CORS middleware
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],  # In production, specify your frontend domains
-#     allow_credentials=True,
-#     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-#     allow_headers=["*"],
-# )
-
-# # Global exception handler with detailed logging
-# @app.exception_handler(Exception)
-# async def global_exception_handler(request: Request, exc: Exception):
-#     logger.error(f"❌ GLOBAL EXCEPTION HANDLER TRIGGERED")
-#     logger.error(f"❌ Exception type: {type(exc)}")
-#     logger.error(f"❌ Exception message: {str(exc)}")
-#     logger.error(f"❌ Request URL: {request.url}")
-#     logger.error(f"❌ Request method: {request.method}")
-#     logger.error(f"❌ Request headers: {dict(request.headers)}")
-    
-#     # Try to get request body
-#     try:
-#         body = await request.body()
-#         if body:
-#             logger.error(f"❌ Request body: {body.decode('utf-8')}")
-#     except Exception as body_error:
-#         logger.error(f"❌ Could not read request body: {body_error}")
-    
-#     logger.error(f"❌ Full traceback: {traceback.format_exc()}")
-    
-#     error_response = {
-#         "error": "Internal server error",
-#         "details": str(exc),
-#         "error_type": str(type(exc)),
-#         "timestamp": datetime.now(timezone.utc).isoformat(),
-#         "path": str(request.url.path),
-#         "method": request.method
-#     }
-    
-#     logger.error(f"📤 Global handler returning: {error_response}")
-    
-#     return JSONResponse(
-#         status_code=500,
-#         content=error_response
-#     )
-
-# # Enhanced request logging middleware
-# @app.middleware("http")
-# async def log_requests(request: Request, call_next):
-#     start_time = datetime.now()
-    
-#     # Log comprehensive request details
-#     logger.info(f"📥 === NEW REQUEST ===")
-#     logger.info(f"📥 {request.method} {request.url}")
-#     logger.info(f"📥 Headers: {dict(request.headers)}")
-#     logger.info(f"📥 Query params: {dict(request.query_params)}")
-#     logger.info(f"📥 Path params: {request.path_params}")
-#     logger.info(f"📥 Client: {request.client}")
-    
-#     # Get request body for POST/PUT/PATCH requests
-#     body_logged = False
-#     if request.method in ["POST", "PUT", "PATCH"]:
-#         try:
-#             # Read body without consuming it
-#             body = await request.body()
-#             if body:
-#                 try:
-#                     body_str = body.decode('utf-8')
-#                     logger.info(f"📝 Request body: {body_str}")
-                    
-#                     # Try to parse as JSON for better logging
-#                     try:
-#                         body_json = json.loads(body_str)
-#                         logger.info(f"📝 Parsed JSON: {body_json}")
-#                     except:
-#                         logger.info(f"📝 Body is not valid JSON")
-                    
-#                     body_logged = True
-#                 except UnicodeDecodeError:
-#                     logger.info("📝 Request body: [binary data]")
-#                     body_logged = True
-#         except Exception as body_error:
-#             logger.error(f"❌ Error reading request body: {body_error}")
-    
-#     if not body_logged and request.method in ["POST", "PUT", "PATCH"]:
-#         logger.info("📝 No request body")
-    
-#     # Process request
-#     logger.info("⏳ Processing request...")
-    
-#     try:
-#         response = await call_next(request)
-        
-#         # Log response details
-#         process_time = (datetime.now() - start_time).total_seconds()
-#         logger.info(f"📤 Response status: {response.status_code}")
-#         logger.info(f"📤 Response headers: {dict(response.headers)}")
-#         logger.info(f"📤 Process time: {process_time:.3f}s")
-        
-#         # Log response body for debugging (be careful with large responses)
-#         if hasattr(response, 'body'):
-#             try:
-#                 # This is tricky with StreamingResponse, so we'll skip for now
-#                 logger.info(f"📤 Response has body attribute")
-#             except:
-#                 pass
-        
-#         logger.info(f"✅ Request completed successfully in {process_time:.3f}s")
-        
-#         return response
-        
-#     except Exception as e:
-#         process_time = (datetime.now() - start_time).total_seconds()
-#         logger.error(f"❌ Request processing failed after {process_time:.3f}s")
-#         logger.error(f"❌ Middleware error: {str(e)}")
-#         logger.error(f"❌ Middleware traceback: {traceback.format_exc()}")
-        
-#         # Return error response
-#         return JSONResponse(
-#             status_code=500,
-#             content={
-#                 "error": "Request processing failed",
-#                 "details": str(e),
-#                 "timestamp": datetime.now(timezone.utc).isoformat()
-#             }
-#         )
-
-# # Enhanced health check endpoint
-# @app.get("/")
-# async def root():
-#     logger.info("🏠 Root endpoint called")
-    
-#     response_data = {
-#         "message": "Blog Generator API is running",
-#         "status": "healthy",
-#         "timestamp": datetime.now(timezone.utc).isoformat(),
-#         "version": "1.0.0",
-#         "endpoints": {
-#             "health": "/health",
-#             "docs": "/docs",
-#             "blog_generation": "/api/generate_blog",
-#             "test": "/api/test",
-#             "debug": "/api/debug_generate"
-#         }
-#     }
-    
-#     logger.info(f"✅ Root returning: {response_data}")
-#     return response_data
-
-# @app.get("/health")
-# async def health_check():
-#     logger.info("🏥 Main health check called")
-    
-#     import os
-#     import sys
-    
-#     health_data = {
-#         "status": "healthy",
-#         "timestamp": datetime.now(timezone.utc).isoformat(),
-#         "service": "blog-generator-api",
-#         "version": "1.0.0",
-#         "python_version": sys.version,
-#         "environment_check": {
-#             "GOOGLE_API_KEY": "✅ Set" if os.getenv("GOOGLE_API_KEY") else "❌ Missing",
-#             "MONGODB_URL": "✅ Set" if os.getenv("MONGODB_URL") else "❌ Missing"
-#         }
-#     }
-    
-#     logger.info(f"✅ Main health check returning: {health_data}")
-#     return health_data
-
-# # Add a simple ping endpoint
-# @app.get("/ping")
-# async def ping():
-#     logger.info("🏓 Ping endpoint called")
-#     return {"message": "pong", "timestamp": datetime.now(timezone.utc).isoformat()}
-
-# # Include blog routes with proper error handling
-# try:
-#     logger.info("📂 Including blog router...")
-#     app.include_router(blog_router, prefix="/api", tags=["blogs"])
-#     logger.info("✅ Blog router included successfully")
-# except Exception as router_error:
-#     logger.error(f"❌ Failed to include blog router: {router_error}")
-#     logger.error(f"❌ Router traceback: {traceback.format_exc()}")
-
-# # Add startup event
-# @app.on_event("startup")
-# async def startup_event():
-#     logger.info("🚀 === APPLICATION STARTUP ===")
-#     logger.info("🚀 Blog Generator API is starting...")
-    
-#     # Check environment variables
-#     import os
-#     logger.info(f"🔍 Environment check:")
-#     logger.info(f"   GOOGLE_API_KEY: {'✅ Set' if os.getenv('GOOGLE_API_KEY') else '❌ Missing'}")
-#     logger.info(f"   MONGODB_URL: {'✅ Set' if os.getenv('MONGODB_URL') else '❌ Missing'}")
-    
-#     # Test database connection if possible
-#     try:
-#         from app.database.mongo import blogs_collection
-#         if blogs_collection is not None:
-#             logger.info("✅ Database connection available")
-#         else:
-#             logger.warning("⚠️ Database connection not available")
-#     except Exception as db_error:
-#         logger.error(f"❌ Database connection test failed: {db_error}")
-    
-#     logger.info("✅ Application startup completed")
-
-# # Add shutdown event
-# @app.on_event("shutdown")
-# async def shutdown_event():
-#     logger.info("🛑 === APPLICATION SHUTDOWN ===")
-#     logger.info("🛑 Blog Generator API is shutting down...")
-
-# if __name__ == "__main__":
-#     import uvicorn
-#     logger.info("🚀 Starting Blog Generator API server directly...")
-#     uvicorn.run(
-#         "main:app",
-#         host="0.0.0.0",
-#         port=8000,
-#         reload=True,
-#         log_level="info",
-#         access_log=True
-#     )
-
-# DIAGNOSTIC VERSION - Replace your main.py temporarily
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 import traceback
 import sys
+import json
+import os
 from datetime import datetime, timezone
 
-# Set up console logging
+# Set up comprehensive logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.StreamHandler(sys.stderr)
+    ]
 )
 logger = logging.getLogger(__name__)
 
-# Print to console immediately
+# Print startup message
 print("=" * 80)
-print("🚀 DIAGNOSTIC MODE: Starting FastAPI application")
+print("🚀 ENHANCED BLOG GENERATOR API STARTING")
 print(f"🚀 Timestamp: {datetime.now().isoformat()}")
 print("=" * 80)
 
 app = FastAPI(
-    title="DIAGNOSTIC Blog Generator API",
-    description="Diagnostic version for debugging empty response",
-    version="diagnostic-1.0.0"
+    title="Enhanced Blog Generator API",
+    description="AI-powered blog generation service with comprehensive error handling",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# Simple CORS
+# Enhanced CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Configure properly for production
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# Diagnostic middleware to log everything
+# Enhanced request logging middleware
 @app.middleware("http")
-async def diagnostic_middleware(request: Request, call_next):
-    print(f"\n{'='*60}")
-    print(f"📥 DIAGNOSTIC REQUEST: {request.method} {request.url}")
-    print(f"📥 Headers: {dict(request.headers)}")
-    print(f"📥 Timestamp: {datetime.now().isoformat()}")
+async def enhanced_request_logging(request: Request, call_next):
+    start_time = datetime.now()
+    request_id = f"req_{int(start_time.timestamp() * 1000)}"
     
-    # Log request body
+    # Log comprehensive request details
+    logger.info(f"📥 [{request_id}] === NEW REQUEST ===")
+    logger.info(f"📥 [{request_id}] {request.method} {request.url}")
+    logger.info(f"📥 [{request_id}] Client: {request.client}")
+    logger.info(f"📥 [{request_id}] Headers: {dict(request.headers)}")
+    logger.info(f"📥 [{request_id}] Query params: {dict(request.query_params)}")
+    
+    # Log request body for POST/PUT/PATCH
+    body_logged = False
     if request.method in ["POST", "PUT", "PATCH"]:
-        body = await request.body()
-        print(f"📥 Body: {body}")
+        try:
+            body = await request.body()
+            if body:
+                try:
+                    body_str = body.decode('utf-8')
+                    logger.info(f"📝 [{request_id}] Request body: {body_str}")
+                    
+                    # Try to parse JSON
+                    try:
+                        body_json = json.loads(body_str)
+                        logger.info(f"📝 [{request_id}] Parsed JSON: {body_json}")
+                    except:
+                        logger.info(f"📝 [{request_id}] Body is not JSON")
+                    
+                    body_logged = True
+                except UnicodeDecodeError:
+                    logger.info(f"📝 [{request_id}] Request body: [binary data]")
+                    body_logged = True
+        except Exception as body_error:
+            logger.error(f"❌ [{request_id}] Error reading body: {body_error}")
+    
+    logger.info(f"⏳ [{request_id}] Processing request...")
     
     try:
-        print("⏳ DIAGNOSTIC: Processing request...")
         response = await call_next(request)
-        print(f"📤 DIAGNOSTIC RESPONSE: Status {response.status_code}")
-        print(f"📤 Response headers: {dict(response.headers)}")
-        print(f"{'='*60}\n")
+        
+        # Log response details
+        process_time = (datetime.now() - start_time).total_seconds()
+        logger.info(f"📤 [{request_id}] Response: {response.status_code}")
+        logger.info(f"📤 [{request_id}] Headers: {dict(response.headers)}")
+        logger.info(f"📤 [{request_id}] Time: {process_time:.3f}s")
+        logger.info(f"✅ [{request_id}] Request completed successfully")
+        
         return response
+        
     except Exception as e:
-        print(f"❌ DIAGNOSTIC MIDDLEWARE ERROR: {str(e)}")
-        traceback.print_exc()
-        print(f"{'='*60}\n")
+        process_time = (datetime.now() - start_time).total_seconds()
+        logger.error(f"❌ [{request_id}] Middleware error after {process_time:.3f}s")
+        logger.error(f"❌ [{request_id}] Error: {str(e)}")
+        logger.error(f"❌ [{request_id}] Traceback: {traceback.format_exc()}")
+        
         return JSONResponse(
             status_code=500,
-            content={"diagnostic_middleware_error": str(e)}
+            content={
+                "error": "Request processing failed",
+                "details": str(e),
+                "request_id": request_id,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
         )
 
 # Global exception handler
 @app.exception_handler(Exception)
-async def diagnostic_exception_handler(request: Request, exc: Exception):
-    print(f"\n{'!'*80}")
-    print(f"❌ DIAGNOSTIC GLOBAL EXCEPTION HANDLER")
-    print(f"❌ Exception: {str(exc)}")
-    print(f"❌ Exception type: {type(exc)}")
-    print(f"❌ Request: {request.method} {request.url}")
-    traceback.print_exc()
-    print(f"{'!'*80}\n")
+async def global_exception_handler(request: Request, exc: Exception):
+    error_id = f"err_{int(datetime.now().timestamp() * 1000)}"
+    
+    logger.error(f"❌ [{error_id}] === GLOBAL EXCEPTION HANDLER ===")
+    logger.error(f"❌ [{error_id}] Exception type: {type(exc)}")
+    logger.error(f"❌ [{error_id}] Exception message: {str(exc)}")
+    logger.error(f"❌ [{error_id}] Request: {request.method} {request.url}")
+    logger.error(f"❌ [{error_id}] Headers: {dict(request.headers)}")
+    
+    # Try to get request body
+    try:
+        body = await request.body()
+        if body:
+            logger.error(f"❌ [{error_id}] Body: {body.decode('utf-8')}")
+    except:
+        logger.error(f"❌ [{error_id}] Could not read request body")
+    
+    logger.error(f"❌ [{error_id}] Traceback: {traceback.format_exc()}")
+    
+    error_response = {
+        "error": "Internal server error",
+        "details": str(exc),
+        "error_type": str(type(exc)),
+        "error_id": error_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "path": str(request.url.path),
+        "method": request.method
+    }
+    
+    logger.error(f"📤 [{error_id}] Returning error response")
     
     return JSONResponse(
         status_code=500,
-        content={
-            "diagnostic_global_error": True,
-            "error": str(exc),
-            "error_type": str(type(exc)),
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
+        content=error_response
     )
 
 # Root endpoint
 @app.get("/")
-async def diagnostic_root():
-    print("🏠 DIAGNOSTIC: Root endpoint called")
+async def root():
+    logger.info("🏠 Root endpoint called")
+    
     response_data = {
-        "diagnostic": True,
-        "message": "DIAGNOSTIC MODE: API is running",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "message": "Enhanced Blog Generator API",
+        "status": "healthy",
+        "version": "2.0.0",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "blog_generation": "/api/generate_blog",
+            "debug_generation": "/api/debug_generate",
+            "test": "/api/test",
+            "diagnostics": "/api/diagnostic_health"
+        }
     }
-    print(f"🏠 DIAGNOSTIC: Returning root data: {response_data}")
+    
+    logger.info("✅ Root endpoint successful")
     return response_data
 
-# Import and include routes with error handling
-try:
-    print("📂 DIAGNOSTIC: Attempting to import blog router...")
-    from app.routes.blog import router as blog_router
-    print("✅ DIAGNOSTIC: Blog router imported successfully")
+# Health check
+@app.get("/health")
+async def health_check():
+    logger.info("🏥 Health check called")
     
-    print("📂 DIAGNOSTIC: Including blog router...")
-    app.include_router(blog_router, prefix="/api", tags=["diagnostic-blogs"])
-    print("✅ DIAGNOSTIC: Blog router included successfully")
+    # Check environment variables
+    env_status = {
+        "GOOGLE_API_KEY": "✅ Set" if os.getenv("GOOGLE_API_KEY") else "❌ Missing",
+        "MONGODB_URL": "✅ Set" if os.getenv("MONGODB_URL") else "❌ Missing"
+    }
     
-except Exception as e:
-    print(f"❌ DIAGNOSTIC: Failed to import/include blog router: {str(e)}")
-    traceback.print_exc()
-    
-    # Create a fallback endpoint
-    @app.post("/api/generate_blog")
-    async def fallback_generate_blog(request: Request):
-        print("🔄 DIAGNOSTIC: Using fallback blog endpoint")
-        body = await request.body()
-        return JSONResponse(content={
-            "diagnostic": True,
-            "message": "Fallback endpoint - router import failed",
-            "received_body": body.decode('utf-8') if body else None,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "error": str(e)
-        })
-
-# Startup event
-@app.on_event("startup")
-async def diagnostic_startup():
-    print("\n" + "="*80)
-    print("🚀 DIAGNOSTIC STARTUP EVENT")
-    print(f"🚀 Application starting at: {datetime.now().isoformat()}")
-    
-    # Test environment
-    import os
-    print(f"🔍 GOOGLE_API_KEY: {'✅ SET' if os.getenv('GOOGLE_API_KEY') else '❌ MISSING'}")
-    print(f"🔍 MONGODB_URL: {'✅ SET' if os.getenv('MONGODB_URL') else '❌ MISSING'}")
-    
-    # Test imports
+    # Check imports
+    import_status = {}
     try:
         from app.models.blog_request import BlogRequest
-        print("✅ BlogRequest import: OK")
+        import_status["blog_request"] = "✅ OK"
     except Exception as e:
-        print(f"❌ BlogRequest import: FAILED - {str(e)}")
+        import_status["blog_request"] = f"❌ {str(e)}"
     
     try:
         from app.services.blog_generator import generate_blog
-        print("✅ blog_generator import: OK")
+        import_status["blog_generator"] = "✅ OK"
     except Exception as e:
-        print(f"❌ blog_generator import: FAILED - {str(e)}")
+        import_status["blog_generator"] = f"❌ {str(e)}"
     
-    print("="*80 + "\n")
+    try:
+        from app.database.mongo import blogs_collection
+        import_status["mongo"] = "✅ OK"
+    except Exception as e:
+        import_status["mongo"] = f"❌ {str(e)}"
+    
+    health_data = {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "service": "enhanced-blog-generator-api",
+        "version": "2.0.0",
+        "python_version": sys.version,
+        "environment": env_status,
+        "imports": import_status,
+        "working_directory": os.getcwd()
+    }
+    
+    logger.info("✅ Health check completed")
+    return health_data
 
 # Simple test endpoints
+@app.get("/ping")
+async def ping():
+    logger.info("🏓 Ping called")
+    return {
+        "message": "pong",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 @app.get("/test")
 def simple_test():
-    print("🧪 DIAGNOSTIC: Simple test endpoint")
-    return {"diagnostic": True, "test": "working"}
-
-@app.post("/test_post")
-async def test_post(request: Request):
-    print("🧪 DIAGNOSTIC: Test POST endpoint")
-    body = await request.body()
+    logger.info("🧪 Simple test called")
     return {
-        "diagnostic": True,
-        "received_body": body.decode('utf-8') if body else None,
-        "test": "post_working"
+        "message": "Simple test successful",
+        "timestamp": datetime.now().isoformat(),
+        "test_number": 12345
     }
+
+@app.post("/echo")
+async def echo(request: Request):
+    """Echo endpoint to test request/response handling"""
+    logger.info("🔄 Echo endpoint called")
+    
+    body = await request.body()
+    
+    try:
+        json_data = json.loads(body.decode('utf-8')) if body else None
+    except:
+        json_data = None
+    
+    echo_response = {
+        "message": "Echo successful",
+        "method": request.method,
+        "url": str(request.url),
+        "headers": dict(request.headers),
+        "raw_body": body.decode('utf-8') if body else None,
+        "parsed_json": json_data,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    logger.info("✅ Echo completed")
+    return echo_response
+
+# Import and include blog routes
+logger.info("📂 Importing blog router...")
+try:
+    from app.routes.blog import router as blog_router
+    logger.info("✅ Blog router imported successfully")
+    
+    app.include_router(blog_router, prefix="/api", tags=["blogs"])
+    logger.info("✅ Blog router included successfully")
+    
+except Exception as router_error:
+    logger.error(f"❌ Failed to import/include blog router: {router_error}")
+    logger.error(f"❌ Router traceback: {traceback.format_exc()}")
+    
+    # Create fallback endpoints
+    @app.post("/api/generate_blog")
+    async def fallback_generate_blog(request: Request):
+        logger.error("🔄 Using fallback blog endpoint due to router import failure")
+        
+        try:
+            body = await request.body()
+            json_data = json.loads(body.decode('utf-8')) if body else {}
+            topic = json_data.get('topic', 'Unknown topic')
+        except:
+            topic = "Unknown topic"
+        
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "Blog router not available",
+                "details": str(router_error),
+                "topic": topic,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "fallback": True
+            }
+        )
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    logger.info("🚀 === APPLICATION STARTUP ===")
+    logger.info("🚀 Enhanced Blog Generator API starting...")
+    
+    # Environment check
+    logger.info("🔍 Environment variables:")
+    for key in ["GOOGLE_API_KEY", "MONGODB_URL"]:
+        value = os.getenv(key)
+        if value:
+            logger.info(f"   {key}: ✅ Set ({len(value)} chars)")
+        else:
+            logger.warning(f"   {key}: ❌ Missing")
+    
+    # Test database connection
+    try:
+        from app.database.mongo import blogs_collection
+        if blogs_collection is not None:
+            logger.info("✅ Database connection available")
+        else:
+            logger.warning("⚠️ Database connection is None")
+    except Exception as db_error:
+        logger.error(f"❌ Database connection test failed: {db_error}")
+    
+    logger.info("✅ Application startup completed")
+
+# Shutdown event
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("🛑 === APPLICATION SHUTDOWN ===")
+    logger.info("🛑 Enhanced Blog Generator API shutting down...")
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 DIAGNOSTIC: Starting server directly...")
+    logger.info("🚀 Starting Enhanced Blog Generator API server...")
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info"
+        log_level="info",
+        access_log=True
     )
