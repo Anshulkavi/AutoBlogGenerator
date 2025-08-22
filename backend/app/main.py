@@ -69,7 +69,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
 # Import application routers
-from app.routes import blog, history, auth
+from app.routes import blog, history, user_auth_routes
 
 app = FastAPI(
     title="Blog Generator API with Authentication",
@@ -93,7 +93,7 @@ app.add_middleware(
 )
 
 # --- Routers ---
-app.include_router(auth.router, prefix="/api", tags=["Authentication"])
+app.include_router(user_auth_routes.router, prefix="/api", tags=["Authentication"])
 app.include_router(blog.router, prefix="/api", tags=["Blog Generation"])
 app.include_router(history.router, prefix="/api", tags=["Blog History"])
 

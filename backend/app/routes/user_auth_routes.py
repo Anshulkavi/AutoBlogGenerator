@@ -1,18 +1,19 @@
-# backend/app/routes/auth.py
-from fastapi import APIRouter, HTTPException, Depends, status
+# backend/app/routes/user_auth_routes.py
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timezone
 from bson import ObjectId
-from app.services.auth import (
+
+from app.models.user import UserCreate, UserLogin, ProfileUpdate
+from app.services.user_auth_service import (
     create_user, authenticate_user,
     create_access_token, create_refresh_token,
-    verify_token, get_user_by_id
+    verify_token, get_user_by_id,
+    get_current_active_user, security
 )
-from app.models.user import UserCreate, UserLogin, ProfileUpdate
 from app.database.mongo import users_collection
 
 router = APIRouter()
-security = HTTPBearer()
 
 # --- REGISTER ---
 @router.post("/auth/register", response_model=dict)
@@ -41,30 +42,7 @@ async def login(user_credentials: UserLogin):
     refresh_token = create_refresh_token(data={"sub": user["_id"]})
     return {"message": "Login successful", "user": user, "tokens": {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}}
 
-# --- REFRESH ---
-@router.post("/auth/refresh", response_model=dict)
-async def refresh_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = verify_token(token, "refresh")
-    if not payload or "sub" not in payload:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
-    user = await get_user_by_id(payload["sub"])
-    if not user or not user.get("is_active", False):
-        raise HTTPException(status_code=401, detail="User inactive or deleted")
-    access_token = create_access_token(data={"sub": user["_id"]})
-    return {"access_token": access_token, "token_type": "bearer"}
-
 # --- PROFILE ---
-async def get_current_active_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    payload = verify_token(token, "access")
-    if not payload or "sub" not in payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await get_user_by_id(payload["sub"])
-    if not user or not user.get("is_active", False):
-        raise HTTPException(status_code=401, detail="Inactive user")
-    return user
-
 @router.get("/auth/me", response_model=dict)
 async def me(current_user: dict = Depends(get_current_active_user)):
     return current_user
@@ -75,7 +53,7 @@ async def update_profile(profile_data: ProfileUpdate, current_user: dict = Depen
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields to update")
     update_data["updated_at"] = datetime.now(timezone.utc)
-    result = await users_collection.update_one({"_id": ObjectId(current_user["_id"])}, {"$set": update_data})
+    await users_collection.update_one({"_id": ObjectId(current_user["_id"])}, {"$set": update_data})
     updated_user = await get_user_by_id(current_user["_id"])
     return {"message": "Profile updated successfully", "user": updated_user}
 
