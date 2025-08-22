@@ -38,3 +38,6 @@ structlog>=23.2.0
 
 # Optional: For validation
 email-validator>=2.1.0
+
+google-generativeai
+requests
