@@ -62,3 +62,30 @@ async def delete_account(current_user: dict = Depends(get_current_active_user)):
     update_data = {"is_active": False, "deleted_at": datetime.now(timezone.utc), "updated_at": datetime.now(timezone.utc)}
     await users_collection.update_one({"_id": ObjectId(current_user["_id"])}, {"$set": update_data})
     return {"message": "Account deactivated successfully"}
+
+# In user_auth_routes.py
+@router.post("/auth/refresh", response_model=dict)
+async def refresh_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    payload = verify_token(token, "refresh")
+    
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    user = await get_user_by_id(payload["sub"])
+    if not user or not user.get("is_active", False):
+        raise HTTPException(status_code=401, detail="Inactive user")
+    
+    new_access_token = create_access_token(data={"sub": user["_id"]})
+    new_refresh_token = create_refresh_token(data={"sub": user["_id"]})
+    
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer"
+    }
+
+@router.post("/auth/logout", response_model=dict)
+async def logout(current_user: dict = Depends(get_current_active_user)):
+    # Add token to blacklist here if implemented
+    return {"message": "Logged out successfully"}

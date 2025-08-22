@@ -6,6 +6,8 @@ from passlib.context import CryptContext
 from bson import ObjectId
 from app.database.mongo import users_collection
 from app.models.user import UserCreate, UserLogin
+from collections import defaultdict
+import asyncio
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
@@ -100,21 +102,40 @@ async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = 
     except Exception:
         return None
 
-# --- Simple rate limiter ---
-class RateLimiter:
+class EnhancedRateLimiter:
     def __init__(self):
-        self.calls = {}
-        self.limit = 5  # max calls per user per minute
-
-    def is_allowed(self, user_id: str) -> bool:
-        from time import time
-        now = time()
-        timestamps = self.calls.get(user_id, [])
-        timestamps = [t for t in timestamps if now - t < 60]
-        if len(timestamps) >= self.limit:
+        self.user_requests = defaultdict(list)
+        self.cleanup_task = None
+    
+    async def is_allowed(self, user_id: str, limit: int = 5, window: int = 60) -> bool:
+        now = datetime.now(timezone.utc).timestamp()
+        user_requests = self.user_requests[user_id]
+        
+        # Remove old requests
+        self.user_requests[user_id] = [
+            req_time for req_time in user_requests if now - req_time < window
+        ]
+        
+        if len(self.user_requests[user_id]) >= limit:
             return False
-        timestamps.append(now)
-        self.calls[user_id] = timestamps
+        
+        self.user_requests[user_id].append(now)
         return True
 
-rate_limiter = RateLimiter()
+
+# --- Token blacklisting ---
+class TokenBlacklist:
+    def __init__(self):
+        self.blacklisted_tokens = set()
+    
+    def add_token(self, token: str):
+        self.blacklisted_tokens.add(token)
+    
+    def is_blacklisted(self, token: str) -> bool:
+        return token in self.blacklisted_tokens
+
+
+token_blacklist = TokenBlacklist()
+
+# ✅ ADD THIS
+rate_limiter = EnhancedRateLimiter()

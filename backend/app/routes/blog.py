@@ -420,8 +420,9 @@ async def start_generation_route(
         raise HTTPException(status_code=400, detail="Topic is required.")
 
     # Rate limiting for authenticated users
-    if current_user and not rate_limiter.is_allowed(current_user["_id"]):
+    if current_user and not await rate_limiter.is_allowed(current_user["_id"]):
         raise HTTPException(status_code=429, detail="Too many requests. Try later.")
+
 
     job_id = str(uuid.uuid4())
     topic = req.topic.strip()
