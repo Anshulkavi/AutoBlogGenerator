@@ -11,33 +11,27 @@ uvicorn[standard]>=0.24.0
 pydantic>=2.5.0
 pydantic[email]>=2.5.0
 
-# Authentication dependencies
+# Authentication
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
 
 # Database
-motor>=3.3.2  # Async MongoDB driver
+motor>=3.3.2
 pymongo>=4.6.0
 
 # HTTP requests
 httpx>=0.25.2
 aiohttp>=3.9.1
+requests>=2.32.0
 
-# Environment and configuration
+# Environment
 python-dotenv>=1.0.0
 
-# CORS middleware (included in FastAPI but explicit)
-# fastapi already includes starlette
+# Optional / Enhancements
+orjson>=3.9.10          # Fast JSON serialization
+structlog>=23.2.0       # Better logging
+email-validator>=2.1.0  # Email validation
 
-# Optional: For better JSON handling
-orjson>=3.9.10
-
-# Optional: For better logging
-structlog>=23.2.0
-
-# Optional: For validation
-email-validator>=2.1.0
-
+# Google Generative AI SDK
 google-generativeai
-requests

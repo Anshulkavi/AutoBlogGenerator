@@ -1,159 +1,75 @@
-# routes/auth.py
-from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPAuthorizationCredentials
-from datetime import datetime, timezone
-from pydantic import BaseModel, Field
+# backend/app/services/auth.py
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+import os
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from bson import ObjectId
 from app.database.mongo import users_collection
+from app.models.user import UserCreate, UserLogin
 
-from app.services.auth import (
-    UserCreate, UserLogin,
-    create_user, authenticate_user,
-    create_access_token, create_refresh_token,
-    verify_token, get_user_by_id,
-    get_current_active_user, security
-)
+# --- JWT config ---
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecretkey")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-router = APIRouter()
+# --- Password hashing ---
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# --- Pydantic model for profile update ---
-class ProfileUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
-
-# ---------------- REGISTER ----------------
-@router.post("/auth/register", response_model=dict)
-async def register(user_data: UserCreate):
-    try:
-        user = await create_user(user_data)
-        access_token = create_access_token(data={"sub": str(user["_id"])})
-        refresh_token = create_refresh_token(data={"sub": str(user["_id"])})
-        return {
-            "message": "User registered successfully",
-            "user": {
-                "id": str(user["_id"]),
-                "email": user["email"],
-                "full_name": user["full_name"],
-                "is_active": user["is_active"],
-                "created_at": user["created_at"]
-            },
-            "tokens": {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "token_type": "bearer"
-            }
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
-
-# ---------------- LOGIN ----------------
-@router.post("/auth/login", response_model=dict)
-async def login(user_credentials: UserLogin):
-    user = await authenticate_user(user_credentials.email, user_credentials.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
-    if not user.get("is_active", False):
-        raise HTTPException(status_code=400, detail="Inactive user account")
-
-    access_token = create_access_token(data={"sub": str(user["_id"])})
-    refresh_token = create_refresh_token(data={"sub": str(user["_id"])})
-
-    return {
-        "message": "Login successful",
-        "user": {
-            "id": str(user["_id"]),
-            "email": user["email"],
-            "full_name": user["full_name"],
-            "is_active": user["is_active"]
-        },
-        "tokens": {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer"
-        }
-    }
-
-# ---------------- REFRESH TOKEN ----------------
-@router.post("/auth/refresh", response_model=dict)
-async def refresh_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    credentials_exception = HTTPException(
-        status_code=401, detail="Invalid or expired token", headers={"WWW-Authenticate": "Bearer"}
-    )
-    token = credentials.credentials
-    payload = verify_token(token, "refresh")
-    if not payload or "sub" not in payload:
-        raise credentials_exception
-
-    user = await get_user_by_id(payload["sub"])
-    if not user or not user.get("is_active", False):
-        raise credentials_exception
-
-    access_token = create_access_token(data={"sub": str(user["_id"])})
-    return {"access_token": access_token, "token_type": "bearer"}
-
-# ---------------- CURRENT USER ----------------
-@router.get("/auth/me", response_model=dict)
-async def get_current_user_info(current_user: dict = Depends(get_current_active_user)):
-    return {
-        "user": {
-            "id": str(current_user["_id"]),
-            "email": current_user["email"],
-            "full_name": current_user["full_name"],
-            "is_active": current_user["is_active"],
-            "created_at": current_user["created_at"]
-        }
-    }
-
-# ---------------- LOGOUT ----------------
-@router.post("/auth/logout", response_model=dict)
-async def logout(current_user: dict = Depends(get_current_active_user)):
-    # Placeholder: implement JWT blacklist if needed
-    return {"message": "Logged out successfully"}
-
-# ---------------- UPDATE PROFILE ----------------
-@router.put("/auth/profile", response_model=dict)
-async def update_profile(
-    profile_data: ProfileUpdate,
-    current_user: dict = Depends(get_current_active_user)
-):
-    update_data = {k: v for k, v in profile_data.dict(exclude_none=True).items()}
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No valid fields to update")
-
-    update_data["updated_at"] = datetime.now(timezone.utc)
-    result = await users_collection.update_one(
-        {"_id": ObjectId(current_user["_id"])},
-        {"$set": update_data}
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=400, detail="No changes made")
-
-    updated_user = await get_user_by_id(str(current_user["_id"]))
-    return {
-        "message": "Profile updated successfully",
-        "user": {
-            "id": str(updated_user["_id"]),
-            "email": updated_user["email"],
-            "full_name": updated_user["full_name"],
-            "is_active": updated_user["is_active"],
-            "created_at": updated_user["created_at"]
-        }
-    }
-
-# ---------------- DELETE ACCOUNT ----------------
-@router.delete("/auth/account", response_model=dict)
-async def delete_account(current_user: dict = Depends(get_current_active_user)):
-    update_data = {
-        "is_active": False,
-        "deleted_at": datetime.now(timezone.utc),
+# --- Utils ---
+async def create_user(user_data: UserCreate) -> dict:
+    """Create a new user in DB."""
+    existing = await users_collection.find_one({"email": user_data.email})
+    if existing:
+        raise ValueError("User already exists")
+    
+    hashed_password = pwd_context.hash(user_data.password)
+    user_doc = {
+        "email": user_data.email,
+        "full_name": user_data.full_name,
+        "password": hashed_password,
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc)
     }
-    result = await users_collection.update_one(
-        {"_id": ObjectId(current_user["_id"])},
-        {"$set": update_data}
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=400, detail="Failed to deactivate account")
-    return {"message": "Account deactivated successfully"}
+    result = await users_collection.insert_one(user_doc)
+    user_doc["_id"] = str(result.inserted_id)
+    return user_doc
+
+async def authenticate_user(email: str, password: str) -> Optional[dict]:
+    """Authenticate user with email & password."""
+    user = await users_collection.find_one({"email": email})
+    if not user:
+        return None
+    if not pwd_context.verify(password, user["password"]):
+        return None
+    user["_id"] = str(user["_id"])
+    return user
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_token(token: str, token_type: str) -> Optional[dict]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != token_type:
+            return None
+        return payload
+    except JWTError:
+        return None
+
+async def get_user_by_id(user_id: str) -> Optional[dict]:
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    if user:
+        user["_id"] = str(user["_id"])
+    return user
