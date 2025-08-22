@@ -315,7 +315,7 @@ CONTENT:
         logger.info("🔗 Initializing Gemini model...")
         
         # Test different model names if one fails
-        model_names = ["gemini-1.5-flash", "gemini-pro", "gemini-1.5-pro"]
+        model_names = ["gemini-1.5-flash"]
         model = None
         
         for model_name in model_names:
