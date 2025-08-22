@@ -7,7 +7,7 @@ from typing import Optional
 from bson import ObjectId
 from app.database.mongo import users_collection
 
-from services.auth import (
+from app.services.auth import (
     UserCreate, UserLogin,
     create_user, authenticate_user,
     create_access_token, create_refresh_token,

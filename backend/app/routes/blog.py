@@ -349,7 +349,7 @@ from bson import ObjectId
 from app.database.mongo import blogs_collection, jobs_collection
 from app.models.blog_request import BlogRequest
 from app.services.blog_generator import generate_blog
-from services.auth import get_current_user_optional, get_current_active_user, rate_limiter
+from app.services.auth import get_current_user_optional, get_current_active_user, rate_limiter
 
 router = APIRouter()
 
