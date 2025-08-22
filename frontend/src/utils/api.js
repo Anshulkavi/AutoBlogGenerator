@@ -1,81 +1,75 @@
 const BACKEND_URL = import.meta.env.VITE_BACKEND_API_URL;
 
-// Helper function to handle errors more robustly
+/**
+ * Universal error handler
+ * Handles both JSON (FastAPI) & HTML (Render) error responses
+ */
 const handleError = async (response) => {
-    let errorMessage;
-    try {
-        // First, try to parse the error as JSON (like FastAPI sends)
-        const errorJson = await response.json();
-        errorMessage = errorJson.detail || JSON.stringify(errorJson);
-    } catch (e) {
-        // If that fails, it's not JSON (e.g., an HTML error page from Render)
-        // So, we read it as plain text.
-        errorMessage = await response.text();
-    }
-    throw new Error(errorMessage || `Request failed with status: ${response.status}`);
+  let errorMessage;
+  try {
+    const errorJson = await response.json();
+    errorMessage = errorJson.detail || JSON.stringify(errorJson);
+  } catch {
+    errorMessage = await response.text();
+  }
+  throw new Error(errorMessage || `Request failed with status: ${response.status}`);
 };
 
+/**
+ * Generic fetch wrapper
+ */
+const fetchAPI = async (url, options = {}) => {
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    await handleError(response);
+  }
+
+  return response.json();
+};
 
 /**
- * Starts the blog generation process.
- * @param {string} topic The topic for the blog.
- * @returns {Promise<string>} The job ID.
+ * Starts the blog generation process
+ * @param {string} topic The topic for the blog
+ * @returns {Promise<string>} Job ID
  */
 export const startBlogGeneration = async (topic) => {
   console.log(`🚀 Starting blog generation for topic: "${topic}"`);
-  const response = await fetch(`${BACKEND_URL}/generate_blog`, {
+
+  const data = await fetchAPI(`${BACKEND_URL}/api/generate_blog`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ topic }),
   });
 
-  if (!response.ok) {
-    await handleError(response);
-  }
-
-  const data = await response.json();
   console.log("✅ Generation started successfully, Job ID:", data.job_id);
   return data.job_id;
 };
 
 /**
- * Checks the status of a blog generation job.
- * @param {string} jobId The ID of the job to check.
- * @returns {Promise<object>} The job status object.
+ * Checks status of a blog generation job
+ * @param {string} jobId The ID of the job
+ * @returns {Promise<object>} Job status
  */
 export const getGenerationStatus = async (jobId) => {
-  const response = await fetch(`${BACKEND_URL}/generate_blog/status/${jobId}`);
-
-  if (!response.ok) {
-    await handleError(response);
-  }
-
-  const data = await response.json();
+  const data = await fetchAPI(`${BACKEND_URL}/api/generate_blog/status/${jobId}`);
   console.log(`🔄 Status for Job ID ${jobId}:`, data.status);
   return data;
 };
 
 /**
- * Fetches the list of recent blogs.
- * @returns {Promise<object>} The history data.
+ * Fetches the list of recent blogs
+ * @returns {Promise<object>} History data
  */
-export const getHistory = async () => {
-    const response = await fetch(`${BACKEND_URL}/history`);
-    if (!response.ok) {
-        await handleError(response);
-    }
-    return response.json();
+export const getHistory = () => {
+  return fetchAPI(`${BACKEND_URL}/api/history`);
 };
 
 /**
- * Fetches a single blog by its ID.
- * @param {string} id The ID of the blog to fetch.
- * @returns {Promise<object>} The full blog data.
+ * Fetches a single blog by its ID
+ * @param {string} id Blog ID
+ * @returns {Promise<object>} Blog data
  */
-export const getBlogById = async (id) => {
-    const response = await fetch(`${BACKEND_URL}/blog/${id}`);
-    if (!response.ok) {
-        await handleError(response);
-    }
-    return response.json();
+export const getBlogById = (id) => {
+  return fetchAPI(`${BACKEND_URL}/api/blog/${id}`);
 };
