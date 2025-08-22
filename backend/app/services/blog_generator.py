@@ -159,7 +159,7 @@
 #         return title, content
         
 #     except Exception as e:
-#         logger.error(f"❌ Error parsing response: {str(e)}")
+#         logger.error(f"r parsing response: {str(e)}")
 #         raise Exception(f"Failed to parse AI response: {str(e)}")
 
 # def create_fallback_blog(topic: str) -> dict:
