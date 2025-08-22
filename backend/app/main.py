@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
+from fastapi.encoders import jsonable_encoder
 # Import your application's routers
 from app.routes import blog, history
 
@@ -65,5 +65,9 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled error: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal server error. Please try again later."}
+        content=jsonable_encoder({
+            "error": "Internal server error. Please try again later.",
+            "detail": str(exc)  # optional: remove in prod
+        }),
+        headers={"Access-Control-Allow-Origin": "*"}  # 🔑 add CORS header fallback
     )
