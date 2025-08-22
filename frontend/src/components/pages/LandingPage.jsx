@@ -38,7 +38,7 @@ import FeaturesSection from '../landing/FeaturesSection';
 import TestimonialsSection from '../landing/TestimonialsSection';
 import CTASection from '../landing/CTASection';
 import Footer from '../landing/Footer';
-import AuthModal from '../auth/AuthModal';
+import AuthModal from '../../auth/AuthModal';
 import BackgroundElements from '../landing/BackgroundElements';
 
 const LandingPage = () => {
