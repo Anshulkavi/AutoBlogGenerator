@@ -22,7 +22,6 @@ app = FastAPI(
 )
 
 # --- Middleware ---
-# CORS: allow frontend to talk to backend
 origins = [
     "https://autobloggenerator.onrender.com",  # frontend deployed
     "http://localhost:5173",                   # local dev
@@ -30,10 +29,10 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,        # upar wali list se allow karega
+    allow_origins=origins,        # must exactly match frontend URL
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],          # allow GET, POST, PUT, PATCH, DELETE, OPTIONS
+    allow_headers=["*"],          # allow all headers
 )
 
 # --- Routers ---
