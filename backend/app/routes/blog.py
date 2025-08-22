@@ -525,7 +525,7 @@ async def production_health():
     
     # Test environment variables
     health_data["components"]["google_api_key"] = "✅ Set" if os.getenv("GOOGLE_API_KEY") else "❌ Missing"
-    health_data["components"]["mongodb_url"] = "✅ Set" if os.getenv("MONGODB_URL") else "❌ Missing (optional)"
+    health_data["components"]["mongo_url"] = "✅ Set" if os.getenv("MONGO_URL") else "❌ Missing (optional)"
     
     critical_components = ["google_api_key"]
     all_critical_ok = all(

@@ -178,7 +178,7 @@ async def health_check():
     # Check environment variables
     env_status = {
         "GOOGLE_API_KEY": "✅ Set" if os.getenv("GOOGLE_API_KEY") else "❌ Missing",
-        "MONGODB_URL": "✅ Set" if os.getenv("MONGODB_URL") else "❌ Missing"
+        "MONGO_URL": "✅ Set" if os.getenv("MONGO_URL") else "❌ Missing"
     }
     
     # Check imports
@@ -302,7 +302,7 @@ async def startup_event():
     
     # Environment check
     logger.info("🔍 Environment variables:")
-    for key in ["GOOGLE_API_KEY", "MONGODB_URL"]:
+    for key in ["GOOGLE_API_KEY", "MONGO_URL"]:
         value = os.getenv(key)
         if value:
             logger.info(f"   {key}: ✅ Set ({len(value)} chars)")
