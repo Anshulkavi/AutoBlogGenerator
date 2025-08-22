@@ -1,31 +1,5 @@
-# from fastapi import APIRouter
-# from app.database.mongo import db
-# from app.models.blog_entry import BlogEntry
-# from datetime import datetime
-
-# router = APIRouter()
-
-# @router.post("/history/save")
-# async def save_blog(entry: BlogEntry):
-#     entry_dict = entry.dict()
-#     entry_dict["created_at"] = datetime.utcnow()
-#     await db.blogs.insert_one(entry_dict)
-#     return {"message": "Blog saved successfully"}
-
-# @router.get("/history")
-# async def get_blogs():
-#     cursor = db.blogs.find().sort("created_at", -1)
-#     blogs = []
-#     async for blog in cursor:
-#         blog["_id"] = str(blog["_id"])  # Convert ObjectId to string
-#         blogs.append(blog)
-#     return blogs
-
-
-# backend/app/routes/history.py
-
 from fastapi import APIRouter, HTTPException
-from app.database.mongo import blogs_collection  # ✅ Use shared connection
+from app.database.mongo import blogs_collection
 from bson import ObjectId
 from typing import List
 
@@ -33,8 +7,8 @@ router = APIRouter()
 
 @router.get("/history")
 async def get_blog_history():
+    """Fetches a list of the 50 most recent blog posts."""
     try:
-        # 🧾 Fetch latest 50 blogs sorted by date
         blogs_cursor = blogs_collection.find(
             {},
             {"title": 1, "topic": 1, "created_at": 1}
@@ -48,9 +22,22 @@ async def get_blog_history():
                 "topic": blog.get("topic", "Unknown"),
                 "created_at": blog.get("created_at")
             })
-
         return {"history": blogs}
-
     except Exception as e:
-        print("🔥 Error in /history:", e)
         raise HTTPException(status_code=500, detail="Failed to fetch history")
+
+@router.get("/blog/{blog_id}")
+async def get_blog_by_id(blog_id: str):
+    """Fetches a single, complete blog post by its ID."""
+    try:
+        obj_id = ObjectId(blog_id)
+        blog = await blogs_collection.find_one({"_id": obj_id})
+        
+        if not blog:
+            raise HTTPException(status_code=404, detail="Blog not found")
+        
+        # Convert ObjectId to string for the JSON response
+        blog["_id"] = str(blog["_id"])
+        return blog
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch blog: {e}")

@@ -1,3 +1,5 @@
+// components/landing/HeroSection.jsx
+
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 

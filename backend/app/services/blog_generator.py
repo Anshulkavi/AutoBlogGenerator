@@ -217,7 +217,7 @@
 #         "content": content
 #     }
 
-# app/services/blog_generator.py
+# backend/app/services/blog_generator.py
 import os
 import asyncio
 import google.generativeai as genai

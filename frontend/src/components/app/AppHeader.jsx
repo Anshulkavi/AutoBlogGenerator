@@ -66,6 +66,7 @@
 
 // export default AppHeader;
 
+//src/components/app/AppHeader.jsx
 import React from 'react';
 import sidebarIcon from '../../assets/sidebar.svg';
 import { Sparkles } from 'lucide-react';

@@ -1,3 +1,5 @@
+//components/landing/Navigation.jsx
+
 import React from 'react';
 import { Sparkles } from 'lucide-react';
 

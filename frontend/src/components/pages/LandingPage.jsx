@@ -1,3 +1,4 @@
+//pages/LandingPage.jsx
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';

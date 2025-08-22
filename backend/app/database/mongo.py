@@ -1,4 +1,4 @@
-# backend/app/mongo.py
+# backend/app/database/mongo.py
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 from dotenv import load_dotenv

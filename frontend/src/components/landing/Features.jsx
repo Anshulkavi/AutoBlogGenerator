@@ -1,3 +1,5 @@
+
+// components/landing/Features.jsx
 import { Zap, FileText, Users } from "lucide-react";
 
 export const FeatureCard = ({ icon: Icon, title, description, gradient }) => (
