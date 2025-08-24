@@ -13,3 +13,8 @@ export { default as MessageBubble } from './app/MessageBubble';
 export { default as MessagesArea } from './app/MessagesArea';
 export { default as InputArea } from './app/InputArea';
 export { default as AppPage } from './pages/AppPage';
+
+export { default as Profile } from './Profile/Profile';
+export { default as ProfileForm } from './Profile/ProfileForm';
+export { default as ProfileStats } from './Profile/ProfileStats';
+export { default as DeleteAccountModal } from './Profile/DeleteAccountModal';

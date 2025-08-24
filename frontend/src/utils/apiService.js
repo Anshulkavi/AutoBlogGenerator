@@ -1,4 +1,4 @@
-// services/apiService.js
+// utils/apiService.js
 const BACKEND_URL = import.meta.env.VITE_BACKEND_API_URL;
 
 class ApiService {
@@ -141,12 +141,15 @@ class ApiService {
     });
   }
 
-  async getMyBlogs() {
-    return this.makeRequest({
-      url: `${BACKEND_URL}/api/my_blogs`,
-      method: 'GET'
-    });
-  }
+async getMyBlogs() {
+  const res = await this.makeRequest({
+    url: `${BACKEND_URL}/api/my_blogs`,
+    method: "GET",
+  });
+
+  // normalize -> always return array
+  return res.blogs || res.data || [];
+}
 
   async deleteBlog(blogId) {
     return this.makeRequest({
